@@ -8,8 +8,11 @@ pub enum TokenType {
     Slash,
     LParen,
     RParen,
-    Equal,
+    Assignment,
     Semicolon,
+    If,
+    Else,
+    Equals, // Binary comparator
 }
 
 #[derive(Debug, PartialEq)]
@@ -57,6 +60,18 @@ impl Lexer {
         }
     }
 
+    fn peek(&self, n: usize) -> Option<char> {
+        self.buffer.chars().nth(self.index + n)
+    }
+
+    fn identifier_or_keyword(&self, identifier: String) -> TokenType {
+        match identifier.as_str() {
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            _ => TokenType::Identifier(identifier),
+        }
+    }
+
     pub fn lex(&mut self) -> Result<&Vec<Token>, LexerError> {
         while self.index < self.size {
             let c = self.get_current()?;
@@ -67,66 +82,39 @@ impl Lexer {
             }
             match self.state {
                 LexerState::Start => {
-                    match c {
+                    let token_type = match c {
                         '0'..='9' => {
                             self.state = LexerState::Integer;
+                            None
                         }
                         'a'..='z' | 'A'..='Z' | '_' => {
                             self.state = LexerState::Identifier;
+                            None
                         }
-                        '+' => {
-                            self.tokens.push(Token {
-                                token: TokenType::Plus,
-                                index: self.index,
-                            });
-                        }
-                        '-' => {
-                            self.tokens.push(Token {
-                                token: TokenType::Minus,
-                                index: self.index,
-                            });
-                        }
-                        '*' => {
-                            self.tokens.push(Token {
-                                token: TokenType::Star,
-                                index: self.index,
-                            });
-                        }
-                        '/' => {
-                            self.tokens.push(Token {
-                                token: TokenType::Slash,
-                                index: self.index,
-                            });
-                        }
-                        '(' => {
-                            self.tokens.push(Token {
-                                token: TokenType::LParen,
-                                index: self.index,
-                            });
-                        }
-                        ')' => {
-                            self.tokens.push(Token {
-                                token: TokenType::RParen,
-                                index: self.index,
-                            });
-                        }
+                        '+' => Some(TokenType::Plus),
+                        '-' => Some(TokenType::Minus),
+                        '*' => Some(TokenType::Star),
+                        '/' => Some(TokenType::Slash),
+                        '(' => Some(TokenType::LParen),
+                        ')' => Some(TokenType::RParen),
                         '=' => {
-                            self.tokens.push(Token {
-                                token: TokenType::Equal,
-                                index: self.index,
-                            });
+                            if self.peek(1) == Some('=') {
+                                self.index += 1;
+                                Some(TokenType::Equals)
+                            } else {
+                                Some(TokenType::Assignment)
+                            }
                         }
-                        ';' => {
-                            self.tokens.push(Token {
-                                token: TokenType::Semicolon,
-                                index: self.index,
-                            });
-                        }
+                        ';' => Some(TokenType::Semicolon),
                         _ => {
                             return Err(LexerError::InvalidCharacter(self.index));
                         }
-                    }
-                    if self.state == LexerState::Start {
+                    };
+                    if let Some(t) = token_type {
+                        self.tokens.push(Token {
+                            index: self.index,
+                            token: t,
+                        });
                         self.index += 1;
                     }
                 }
@@ -168,7 +156,7 @@ impl Lexer {
                     }
                     self.tokens.push(Token {
                         index: self.index - identifier.len(),
-                        token: TokenType::Identifier(identifier),
+                        token: self.identifier_or_keyword(identifier),
                     });
                     self.state = LexerState::Start;
                 }
