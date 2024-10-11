@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TokenType {
     Integer(i64),
     Identifier(String),
@@ -13,11 +13,13 @@ pub enum TokenType {
     If,
     Else,
     Equals, // Binary comparator
+    True,
+    False,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
-    token: TokenType,
+    pub token: TokenType,
     index: usize,
 }
 
@@ -68,6 +70,8 @@ impl Lexer {
         match identifier.as_str() {
             "if" => TokenType::If,
             "else" => TokenType::Else,
+            "true" => TokenType::True,
+            "false" => TokenType::False,
             _ => TokenType::Identifier(identifier),
         }
     }
