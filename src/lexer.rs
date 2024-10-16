@@ -8,13 +8,19 @@ pub enum TokenType {
     Slash,
     LParen,
     RParen,
+    LBrace,
+    RBrace,
     Assignment,
     Semicolon,
     If,
     Else,
+    While,
     Equals, // Binary comparator
     True,
     False,
+
+    // Placeholder types for error handling
+    Expression,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -69,6 +75,7 @@ impl Lexer {
     fn identifier_or_keyword(&self, identifier: String) -> TokenType {
         match identifier.as_str() {
             "if" => TokenType::If,
+            "while" => TokenType::While,
             "else" => TokenType::Else,
             "true" => TokenType::True,
             "false" => TokenType::False,
@@ -101,6 +108,8 @@ impl Lexer {
                         '/' => Some(TokenType::Slash),
                         '(' => Some(TokenType::LParen),
                         ')' => Some(TokenType::RParen),
+                        '{' => Some(TokenType::LBrace),
+                        '}' => Some(TokenType::RBrace),
                         '=' => {
                             if self.peek(1) == Some('=') {
                                 self.index += 1;

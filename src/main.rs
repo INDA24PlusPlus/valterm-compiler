@@ -2,8 +2,18 @@ pub mod ast;
 pub mod lexer;
 pub mod parser;
 
+const SOURCE: &str = "
+a = 1337;
+b = 42;
+if (a == b) {
+    a = 0;
+} else {
+    b = 0;
+}
+";
+
 fn main() {
-    let mut l = lexer::Lexer::new("int skibidi=1337*a".to_string());
+    let mut l = lexer::Lexer::new(SOURCE.to_string());
     let tokens = l.lex().unwrap();
     println!("{:?}", tokens);
     let mut p = parser::Parser::new(tokens.clone());

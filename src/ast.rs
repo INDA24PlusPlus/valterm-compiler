@@ -4,6 +4,7 @@ pub enum Operator {
     Subtract,
     Multiply,
     Divide,
+    Equals,
 }
 
 #[derive(Debug)]
@@ -24,19 +25,21 @@ pub enum Expr {
         symbol: String,
         value: Box<Expr>,
     },
-    If {
-        condition: Box<Expr>,
-        if_body: Vec<Expr>,
-        else_body: Vec<Expr>,
-    },
 }
 
 #[derive(Debug)]
 pub enum Stmt {
     Expr(Expr),
+    Block {
+        body: Vec<Stmt>,
+    },
     If {
         condition: Box<Expr>,
-        if_body: Vec<Stmt>,
-        else_body: Vec<Stmt>,
+        if_body: Box<Stmt>,
+        else_body: Option<Box<Stmt>>,
+    },
+    While {
+        condition: Box<Expr>,
+        body: Box<Stmt>,
     },
 }

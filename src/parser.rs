@@ -117,7 +117,10 @@ impl Parser {
         if let Some(token) = self.peek(0) {
             match token.token {
                 TokenType::Identifier(_) => self.parse_assignment(),
-                _ => Ok(Stmt::Expr(self.parse_expr()?)),
+                TokenType::If => self.parse_if_statement(),
+                TokenType::While => self.parse_while_statement(),
+                TokenType::LBrace => self.parse_block(),
+                _ => Ok(Stmt::Expr(self.parse_expr(true)?)),
             }
         } else {
             Err(ParserError::expected_token(
@@ -128,15 +131,81 @@ impl Parser {
         }
     }
 
+    fn parse_while_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.expect(TokenType::While)?;
+        self.consume();
+        self.expect(TokenType::LParen)?;
+        self.consume();
+
+        let condition = self.parse_expr(false)?;
+
+        self.expect(TokenType::RParen)?;
+        self.consume();
+
+        let body = self.parse_statement()?;
+        Ok(Stmt::While {
+            condition: Box::new(condition),
+            body: Box::new(body),
+        })
+    }
+
+    fn parse_if_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.expect(TokenType::If)?;
+        self.consume();
+        self.expect(TokenType::LParen)?;
+        self.consume();
+
+        let condition = self.parse_expr(false)?;
+
+        self.expect(TokenType::RParen)?;
+        self.consume();
+
+        let if_body = self.parse_statement()?;
+
+        if let Some(token) = self.peek(0) {
+            if token.token == TokenType::Else {
+                self.consume();
+                let else_body = self.parse_statement()?;
+                return Ok(Stmt::If {
+                    condition: Box::new(condition),
+                    if_body: Box::new(if_body),
+                    else_body: Some(Box::new(else_body)),
+                });
+            }
+        }
+
+        Ok(Stmt::If {
+            condition: Box::new(condition),
+            if_body: Box::new(if_body),
+            else_body: None,
+        })
+    }
+
+    fn parse_block(&mut self) -> Result<Stmt, ParserError> {
+        self.expect(TokenType::LBrace)?;
+        self.consume();
+        let mut block = vec![];
+        while let Some(token) = self.peek(0) {
+            if token.token == TokenType::RBrace {
+                self.consume();
+                break;
+            }
+            let statement = self.parse_statement()?;
+            block.push(statement);
+        }
+
+        Ok(Stmt::Block { body: block })
+    }
+
     /// Handle assignment statements
     fn parse_assignment(&mut self) -> Result<Stmt, ParserError> {
-        let type_identifier = self.consume().unwrap();
+        //let _type_identifier = self.consume().unwrap(); // Idk about types tbh
         let identifier = self.expect_type(TokenType::Identifier("".to_string()))?;
         self.consume();
         self.expect(TokenType::Assignment)?;
         self.consume();
 
-        let expr = self.parse_expr()?;
+        let expr = self.parse_expr(true)?;
 
         Ok(Stmt::Expr(Expr::Assignment {
             symbol: match identifier.token {
@@ -148,8 +217,13 @@ impl Parser {
     }
 
     /// Handle binary expressions
-    fn parse_expr(&mut self) -> Result<Expr, ParserError> {
-        self.parse_term()
+    fn parse_expr(&mut self, semicolon: bool) -> Result<Expr, ParserError> {
+        let term = self.parse_term()?;
+        if semicolon {
+            self.expect(TokenType::Semicolon)?;
+            self.consume();
+        }
+        Ok(term)
     }
 
     /// Handle addition and subtraction of terms
@@ -167,6 +241,15 @@ impl Parser {
                 expr = Expr::BinaryExpr {
                     op,
                     left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            } else if tok.token == TokenType::Equals {
+                self.consume();
+                let left = expr;
+                let right = self.parse_expr(false)?;
+                expr = Expr::BinaryExpr {
+                    op: Operator::Equals,
+                    left: Box::new(left),
                     right: Box::new(right),
                 };
             } else {
@@ -206,20 +289,22 @@ impl Parser {
             Some(token) => match token.token {
                 TokenType::Integer(n) => Ok(Expr::Integer(n)),
                 TokenType::LParen => {
-                    let expr = self.parse_expr()?;
+                    let expr = self.parse_expr(false)?;
                     self.expect(TokenType::RParen)?; // Must be followed by a closing parenthesis
                     self.consume(); // Consume the closing parenthesis
                     Ok(expr)
                 }
+                TokenType::True => Ok(Expr::Boolean(true)),
+                TokenType::False => Ok(Expr::Boolean(false)),
                 TokenType::Identifier(ident) => Ok(Expr::Reference(ident)),
                 _ => Err(ParserError::expected_token(
-                    TokenType::Integer(0),
+                    TokenType::Expression,
                     self.previous(),
                     self.index - 1,
                 )),
             },
             None => Err(ParserError::expected_token(
-                TokenType::Integer(0),
+                TokenType::Expression,
                 None,
                 self.index - 1,
             )),
