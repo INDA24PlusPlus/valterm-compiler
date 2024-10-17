@@ -1,13 +1,14 @@
+use codegen::Codegen;
+use inkwell::context::Context;
+
 pub mod ast;
 pub mod codegen;
 pub mod lexer;
 pub mod parser;
 
 const SOURCE: &str = "
-a = 1337;b = 42;
-if (a == b) {
-    print(a);
-} else b = 0;
+a = 1337;
+b = 42;
 ";
 
 fn main() {
@@ -22,5 +23,8 @@ fn main() {
             return;
         }
     }
-    println!("{:?}", p.program);
+    //println!("{:?}", p.program);
+    let ctx = Context::create();
+    let mut codegen = Codegen::new(&ctx);
+    codegen.compile(p.program);
 }

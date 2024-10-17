@@ -158,4 +158,5 @@ name = "valterm-compiler"
 version = "0.1.0"
 dependencies = [
  "inkwell",
+ "llvm-sys",
 ]
