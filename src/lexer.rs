@@ -18,6 +18,7 @@ pub enum TokenType {
     Equals, // Binary comparator
     True,
     False,
+    Comma,
 
     // Placeholder types for error handling
     Expression,
@@ -119,6 +120,7 @@ impl Lexer {
                             }
                         }
                         ';' => Some(TokenType::Semicolon),
+                        ',' => Some(TokenType::Comma),
                         _ => {
                             return Err(LexerError::InvalidCharacter(self.index));
                         }

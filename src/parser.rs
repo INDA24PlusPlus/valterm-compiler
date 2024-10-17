@@ -116,7 +116,15 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         if let Some(token) = self.peek(0) {
             match token.token {
-                TokenType::Identifier(_) => self.parse_assignment(),
+                TokenType::Identifier(_) => {
+                    if self.peek(1).is_some_and(|t| t.token == TokenType::LParen) {
+                        // Function call
+                        self.parse_call()
+                    } else {
+                        // Assignment
+                        self.parse_assignment()
+                    }
+                }
                 TokenType::If => self.parse_if_statement(),
                 TokenType::While => self.parse_while_statement(),
                 TokenType::LBrace => self.parse_block(),
@@ -129,6 +137,39 @@ impl Parser {
                 self.index,
             ))
         }
+    }
+
+    fn parse_call(&mut self) -> Result<Stmt, ParserError> {
+        let identifier = self.expect_type(TokenType::Identifier("".to_string()))?;
+        self.consume();
+        self.expect(TokenType::LParen)?;
+        self.consume();
+
+        let mut args = vec![];
+        while let Some(token) = self.peek(0) {
+            if token.token == TokenType::RParen {
+                self.consume();
+                break;
+            }
+            let expr = self.parse_expr(false)?;
+            args.push(expr);
+            if let Some(token) = self.peek(0) {
+                if token.token == TokenType::Comma {
+                    self.consume();
+                }
+            }
+        }
+
+        self.expect(TokenType::Semicolon)?;
+        self.consume();
+
+        Ok(Stmt::Call {
+            function: match identifier.token {
+                TokenType::Identifier(s) => s,
+                _ => unreachable!(),
+            },
+            args,
+        })
     }
 
     fn parse_while_statement(&mut self) -> Result<Stmt, ParserError> {

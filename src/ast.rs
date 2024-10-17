@@ -42,4 +42,8 @@ pub enum Stmt {
         condition: Box<Expr>,
         body: Box<Stmt>,
     },
+    Call {
+        function: String,
+        args: Vec<Expr>,
+    },
 }
