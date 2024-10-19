@@ -4,7 +4,7 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::{Linkage, Module},
-    values::{IntValue, PointerValue},
+    values::{BasicValue, IntValue, PointerValue},
     AddressSpace,
 };
 
@@ -126,29 +126,80 @@ impl<'ctx> Codebuilder<'ctx> {
     }
 
     fn compile_statement(
-        &mut self,
+        &self,
         compiler: &mut Compiler<'ctx>,
         stmt: &Stmt,
     ) -> Result<(), CompilerError> {
         match stmt {
-            Stmt::Expr(expr) => self.compile_expr(compiler, expr)?,
-            Stmt::Block { body } => todo!(),
+            Stmt::Expr(expr) => {
+                self.compile_expr(compiler, expr)?;
+            }
+            Stmt::Block { body } => {
+                for stmt in body {
+                    self.compile_statement(compiler, stmt)?;
+                }
+            }
             Stmt::If {
                 condition,
                 if_body,
                 else_body,
-            } => todo!(),
-            Stmt::While { condition, body } => todo!(),
+            } => {
+                let current_block = self.builder.get_insert_block().unwrap();
+                let then_block = self
+                    .context
+                    .append_basic_block(current_block.get_parent().unwrap(), "then");
+                let continue_block = self
+                    .context
+                    .append_basic_block(current_block.get_parent().unwrap(), "continue");
+
+                let else_block = match else_body {
+                    Some(_) => self
+                        .context
+                        .append_basic_block(current_block.get_parent().unwrap(), "else"),
+                    None => continue_block,
+                };
+
+                let condition = self.compile_expr(compiler, condition)?;
+                self.builder
+                    .build_conditional_branch(condition, then_block, else_block)?;
+
+                self.builder.position_at_end(then_block);
+                self.compile_statement(compiler, if_body)?;
+                if let Some(else_body) = else_body {
+                    self.builder.build_unconditional_branch(continue_block)?;
+                    self.builder.position_at_end(else_block);
+                    self.compile_statement(compiler, else_body)?;
+                }
+                self.builder.build_unconditional_branch(continue_block)?;
+                self.builder.position_at_end(continue_block);
+            }
+            Stmt::While { condition, body } => {
+                let current_block = self.builder.get_insert_block().unwrap();
+                let func = current_block.get_parent().unwrap();
+                let loop_block = self.context.append_basic_block(func, "loop");
+                let continue_block = self.context.append_basic_block(func, "continue");
+
+                // Jump to loop block
+                self.builder.build_unconditional_branch(loop_block)?;
+
+                self.builder.position_at_end(loop_block);
+
+                self.compile_statement(compiler, body)?;
+
+                let condition = self.compile_expr(compiler, condition)?;
+                self.builder
+                    .build_conditional_branch(condition, loop_block, continue_block)?;
+
+                self.builder.position_at_end(continue_block);
+            }
             Stmt::Call { function, args } => {
                 if function != "print" {
                     return Err(CompilerError::UndefinedSymbol(function.clone()));
                 }
 
-                let i64_type = self.context.i64_type();
                 let print = self.module.get_function("print").unwrap();
                 let arg = self.compile_expr(compiler, &args[0])?;
                 self.builder.build_call(print, &[arg.into()], "print")?;
-                arg
             }
         };
 
@@ -193,6 +244,12 @@ impl<'ctx> Codebuilder<'ctx> {
                         left,
                         right,
                         "v_eq",
+                    ),
+                    Operator::NotEquals => self.builder.build_int_compare(
+                        inkwell::IntPredicate::NE,
+                        left,
+                        right,
+                        "v_ne",
                     ),
                 }?;
 

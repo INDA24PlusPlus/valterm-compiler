@@ -5,6 +5,7 @@ pub enum Operator {
     Multiply,
     Divide,
     Equals,
+    NotEquals,
 }
 
 #[derive(Debug)]

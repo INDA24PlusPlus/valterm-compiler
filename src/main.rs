@@ -6,9 +6,18 @@ pub mod compiler;
 pub mod lexer;
 pub mod parser;
 
+// Fibonacci sequence
 const SOURCE: &str = "
-a = 1337;
-print(a);
+i = 0;
+a = 0;
+b = 1;
+while (i != 20) {
+    print(a);
+    tmp = a;
+    a = b;
+    b = tmp + b;
+    i = i + 1;
+}
 ";
 
 fn main() {

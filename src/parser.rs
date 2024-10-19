@@ -293,6 +293,15 @@ impl Parser {
                     left: Box::new(left),
                     right: Box::new(right),
                 };
+            } else if tok.token == TokenType::NotEquals {
+                self.consume();
+                let left = expr;
+                let right = self.parse_expr(false)?;
+                expr = Expr::BinaryExpr {
+                    op: Operator::NotEquals,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                };
             } else {
                 break;
             }

@@ -16,6 +16,7 @@ pub enum TokenType {
     Else,
     While,
     Equals, // Binary comparator
+    NotEquals,
     True,
     False,
     Comma,
@@ -117,6 +118,15 @@ impl Lexer {
                                 Some(TokenType::Equals)
                             } else {
                                 Some(TokenType::Assignment)
+                            }
+                        }
+                        '!' => {
+                            if self.peek(1) == Some('=') {
+                                self.index += 1;
+                                Some(TokenType::NotEquals)
+                            } else {
+                                // No support for unary operators
+                                return Err(LexerError::InvalidCharacter(self.index));
                             }
                         }
                         ';' => Some(TokenType::Semicolon),
